@@ -21,14 +21,14 @@
             width: 100vw;
             height: 100vh;
             overflow: hidden;
-            background-color: transparent; /* Для часов фон прозрачный по умолчанию */
+            background-color: transparent;
         }
 
         /* =========================================
            СТИЛИ РЕДАКТОРА (Скрываются в режиме виджета)
            ========================================= */
         #editor-container {
-            display: none; /* Включается через JS, если нет параметра ?config */
+            display: none;
             background-color: var(--bg);
             color: var(--text);
             width: 100%;
@@ -61,10 +61,10 @@
             height: 300px;
             border: 2px dashed var(--border);
             border-radius: 12px;
-            /* Шахматный фон для предпросмотра прозрачности */
             background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20"><rect width="10" height="10" fill="%23eee"/><rect x="10" y="10" width="10" height="10" fill="%23eee"/></svg>');
             position: relative;
             overflow: hidden;
+            resize: both; /* Позволяет растягивать окно предпросмотра для теста адаптивности */
         }
 
         .preview-box iframe { width: 100%; height: 100%; border: none; }
@@ -106,9 +106,10 @@
 
         /* =========================================
            СТИЛИ ЧАСОВ (ВИДЖЕТА)
+           Используем vmin для идеального масштабирования
            ========================================= */
         #widget-container {
-            display: none; /* Включается через JS, если есть параметр ?config */
+            display: none;
             width: 100%;
             height: 100%;
             justify-content: center;
@@ -117,8 +118,8 @@
 
         .clock-circle {
             position: relative;
-            width: 260px;
-            height: 260px;
+            width: 86vmin;   /* Занимает 86% от ширины/высоты окна (что меньше) */
+            height: 86vmin;
             border-radius: 50%;
             background: #ffffff; /* Циферблат белый */
             display: flex;
@@ -128,12 +129,14 @@
         }
         
         .number { position: absolute; font-weight: bold; pointer-events: none; }
-        .center-dot { position: absolute; width: 16px; height: 16px; border-radius: 50%; z-index: 10; pointer-events: none; }
-        .hand { position: absolute; bottom: 50%; left: 50%; transform-origin: bottom center; border-radius: 4px; cursor: grab; transition: transform 0.05s linear; }
+        .center-dot { position: absolute; width: 5.5vmin; height: 5.5vmin; border-radius: 50%; z-index: 10; pointer-events: none; }
+        
+        .hand { position: absolute; bottom: 50%; left: 50%; transform-origin: bottom center; border-radius: 1vmin; cursor: grab; transition: transform 0.05s linear; }
         .hand:active { cursor: grabbing; }
-        .hand::after { content: ''; position: absolute; left: -15px; right: -15px; top: -15px; bottom: 0; }
-        .hour-hand { width: 8px; height: 70px; margin-left: -4px; z-index: 8; transform: rotate(0deg); }
-        .minute-hand { width: 4px; height: 100px; margin-left: -2px; z-index: 9; transform: rotate(45deg); }
+        .hand::after { content: ''; position: absolute; left: -5vmin; right: -5vmin; top: -5vmin; bottom: 0; }
+        
+        .hour-hand { width: 2.6vmin; height: 24vmin; margin-left: -1.3vmin; z-index: 8; transform: rotate(0deg); }
+        .minute-hand { width: 1.4vmin; height: 34vmin; margin-left: -0.7vmin; z-index: 9; transform: rotate(45deg); }
     </style>
 </head>
 <body>
@@ -171,7 +174,7 @@
                     <iframe id="previewFrame" allowtransparency="true"></iframe>
                 </div>
                 <p style="font-size: 12px; color: #777; margin-top: 10px; text-align: center;">
-                    Стрелки можно перетаскивать мышкой<br>или пальцем на телефоне.
+                    Стрелки можно крутить.<br>Потяните окно за нижний правый угол, чтобы проверить масштабирование!
                 </p>
             </div>
         </div>
@@ -195,7 +198,6 @@
 <!-- РЕЖИМ ВИДЖЕТА (САМИ ЧАСЫ) -->
 <div id="widget-container">
     <div class="clock-circle" id="clock">
-        <!-- Цифры генерируются через JS -->
         <div class="hand hour-hand" id="hourHand"></div>
         <div class="hand minute-hand" id="minuteHand"></div>
         <div class="center-dot"></div>
@@ -207,18 +209,16 @@
     const urlParams = new URLSearchParams(window.location.search);
     const configParam = urlParams.get('config');
 
-    // Константы циферблата
     const arabicNums = ['1','2','3','4','5','6','7','8','9','10','11','12'];
     const romanNums = ['I','II','III','IV','V','VI','VII','VIII','IX','X','XI','XII'];
 
     if (configParam) {
         // ==========================================
-        // РЕЖИМ ВИДЖЕТА (если есть ?config=...)
+        // РЕЖИМ ВИДЖЕТА (есть параметр ?config=...)
         // ==========================================
         document.getElementById('widget-container').style.display = 'flex';
         
         try {
-            // Декодируем настройки из URL
             const config = JSON.parse(decodeURIComponent(atob(configParam)));
             initWidget(config);
         } catch(e) {
@@ -232,7 +232,7 @@
         initEditor();
     }
 
-    // Логика инициализации самих часов (виджета)
+    // Логика инициализации самих часов
     function initWidget(config) {
         const color = config.c || '#2a2a2a';
         const neon = config.n || false;
@@ -243,12 +243,14 @@
         const minuteHand = document.getElementById('minuteHand');
         const centerDot = document.querySelector('.center-dot');
 
-        // Стилизация неонового свечения
-        const glowText = neon ? `0 0 5px ${color}, 0 0 10px ${color}` : 'none';
-        const glowBox = neon ? `0 0 10px ${color}, 0 0 20px ${color}` : 'none';
+        // Стилизация неонового свечения через vmin для адаптивности
+        const glowText = neon ? `0 0 1.5vmin ${color}, 0 0 3vmin ${color}` : 'none';
+        const glowBox = neon ? `0 0 2vmin ${color}, 0 0 4vmin ${color}` : 'none';
 
-        clock.style.borderColor = color;
+        // Добавляем цветную обводку
+        clock.style.border = `2vmin solid ${color}`;
         clock.style.boxShadow = glowBox;
+
         centerDot.style.backgroundColor = color;
         centerDot.style.boxShadow = glowBox;
         
@@ -257,10 +259,10 @@
         minuteHand.style.backgroundColor = color;
         minuteHand.style.boxShadow = glowBox;
 
-        // Генерация цифр
+        // Генерация адаптивных цифр
         const nums = type === 'roman' ? romanNums : arabicNums;
-        const fontSize = type === 'roman' ? '18px' : '24px';
-        const offset = type === 'roman' ? '102' : '110';
+        const fontSize = type === 'roman' ? '6vmin' : '8vmin';
+        const offset = type === 'roman' ? '34vmin' : '36.5vmin';
 
         nums.forEach((num, index) => {
             const angle = (index + 1) * 30;
@@ -270,13 +272,15 @@
             el.style.color = color;
             el.style.textShadow = glowText;
             el.style.fontSize = fontSize;
-            el.style.transform = `rotate(${angle}deg) translate(0, -${offset}px) rotate(-${angle}deg)`;
+            // Расположение цифр по кругу
+            el.style.transform = `rotate(${angle}deg) translate(0, -${offset}) rotate(-${angle}deg)`;
             clock.appendChild(el);
         });
 
         // Скрипт перетаскивания стрелок
         let activeHand = null;
         function getAngle(e) {
+            // Центр рассчитывается динамически, поэтому скейл не сломает математику
             const rect = clock.getBoundingClientRect();
             const cx = rect.left + rect.width / 2;
             const cy = rect.top + rect.height / 2;
@@ -307,10 +311,8 @@
         const codeOutput = document.getElementById('codeOutput');
         const generateBtn = document.getElementById('generateBtn');
 
-        // Получаем чистый URL страницы (без параметров)
         const baseUrl = window.location.href.split('?')[0];
 
-        // Упаковка параметров в строку Base64
         function getConfigHash() {
             const configObj = {
                 c: colorPicker.value,
@@ -320,18 +322,17 @@
             return btoa(encodeURIComponent(JSON.stringify(configObj)));
         }
 
-        // Обновление предпросмотра (загружаем ту же страницу, но с параметром)
         function updatePreview() {
             const hash = getConfigHash();
             previewFrame.src = `${baseUrl}?config=${hash}`;
-            codeOutput.value = ""; // очищаем старый код при изменении
+            codeOutput.value = ""; 
         }
 
-        // Выдача iframe-кода
         function generateIframe() {
             const hash = getConfigHash();
             const iframeUrl = `${baseUrl}?config=${hash}`;
-            const iframeCode = `<iframe src="${iframeUrl}" width="300" height="300" frameborder="0" allowtransparency="true" style="background: transparent;"></iframe>`;
+            // Добавлены стили для абсолютной адаптивности внутри Genially: width и height по 100%
+            const iframeCode = `<iframe src="${iframeUrl}" width="300" height="300" style="width: 100%; height: 100%; min-width: 150px; min-height: 150px;" frameborder="0" allowtransparency="true"></iframe>`;
             
             codeOutput.value = iframeCode;
             codeOutput.select();
@@ -342,7 +343,6 @@
         numeralType.addEventListener('change', updatePreview);
         generateBtn.addEventListener('click', generateIframe);
 
-        // Старт
         updatePreview();
     }
 </script>
